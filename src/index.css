@@ -1,0 +1,32 @@
+/* Base Tailwind imports */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Existing hover underline animation */
+.hover-underline-animation {
+  position: relative;
+}
+
+.hover-underline-animation::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 2px;
+  background-color: #ffb000;
+  transition: width 0.3s ease-in-out;
+}
+
+.hover-underline-animation:hover::after {
+  width: 90%;
+}
+
+/* Active state without animation */
+.active-underline::after {
+  width: 90%;
+  background-color: #ffb000;
+  height: 2px;
+}
+
