@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { allServices } from "./servicesData";
 import { Link } from "react-router-dom";
-
 
 const ServiceDetails = () => {
   const [loading, setLoading] = useState(false);
@@ -78,7 +77,7 @@ const ServiceDetails = () => {
           ...prevData,
           ipAddress: data.ip,
         }));
-      })
+      });
 
     setFormData((prevData) => ({
       ...prevData,
@@ -207,9 +206,6 @@ const ServiceDetails = () => {
     }
     setShowError(false);
 
-
-
-
     // --- Custom Mapping as per user instructions ---
     let formDataObj = { ...formData };
 
@@ -333,11 +329,6 @@ const ServiceDetails = () => {
             const opts = input.options || [];
             const idx = opts.indexOf(answer);
             mappedData["windowsType"] = idx >= 0 ? idx + 1 : answer;
-          } else if (question === "Project status?") {
-            // Map to ProjectStatus as 1-2 based on option index+1
-            const opts = input.options || [];
-            const idx = opts.indexOf(answer);
-            mappedData["ProjectStatus"] = idx >= 0 ? idx + 1 : answer;
           } else if (question === "How much is your currency bill?") {
             // Map to SolarCurrencyBill as 1-11 based on option index+1
             const opts = input.options || [];
@@ -474,6 +465,7 @@ const ServiceDetails = () => {
       ...formDataObj,
       category: service.category,
       TcpaText: "By providing my phone number, I consent to receive marketing calls and/or text messages, including from automated systems, at the phone number provided, from The Contractor Now and its affiliates. I understand that consent is not required for purchase. I also understand that message and data rates may apply. I can revoke my consent at any time by replying “STOP” to any text message or contacting PingTree Systems directly. For more information, please refer to PTS's Privacy Policy.",
+      state_abbr: stateAbbreviations[formData.state] || ""
     };
 
     setLoading(true);
@@ -486,7 +478,6 @@ const ServiceDetails = () => {
         },
         body: JSON.stringify(formDataObj),
       });
-      const responseText = await response.text();
       setLoading(false);
       if (response.status === 200) {
         setFormData({
@@ -521,12 +512,132 @@ const ServiceDetails = () => {
         return;
       }
       setApiError("There was a problem submitting your request. Please press Submit again.");
-    } catch (error) {
+    } catch {
       setLoading(false);
       setApiError("There was a problem submitting your request. Please press Submit again.");
     }
   };
-// ...existing code...
+
+  const [isUS, setIsUS] = useState(true);
+  const [ipChecked, setIpChecked] = useState(false);
+  const [zipError, setZipError] = useState("");
+  const [phoneError, setPhoneError] = useState(""); // Add this state
+  const [emailError, setEmailError] = useState(""); // Add this state
+
+  // IP validation effect
+  useEffect(() => {
+    if (formData.ipAddress) {
+      fetch(`https://ipapi.co/${formData.ipAddress}/json/`)
+        .then((res) => res.json())
+        .then((data) => {
+          setIsUS(data.country_code === "US");
+          setIpChecked(true);
+        })
+        .catch(() => {
+          setIsUS(true); // fallback: allow
+          setIpChecked(true);
+        });
+    }
+  }, [formData.ipAddress]);
+
+  // Zip validation effect
+  useEffect(() => {
+    setZipError("");
+    if (formData.zipCode.length === 5 && formData.state) {
+      fetch(`https://steermarketeer.com/api/a9f3b2c1e7d4?zip=${formData.zipCode}`, {
+        method: "POST"
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.state_name === "Unknown") {
+            setZipError("Invalid zip code: not a US zip.");
+          } else if (data.state_name !== formData.state) {
+            setZipError("Zip code does not match selected state.");
+          } else {
+            setZipError("");
+          }
+        })
+        .catch(() => setZipError("Could not validate zip code."));
+    }
+  }, [formData.zipCode, formData.state]);
+
+  // Phone validation effect
+  useEffect(() => {
+    if (formData.phone.length === 10) {
+      const areaCode = parseInt(formData.phone.substring(0, 3), 10);
+      if (!areaCodesUS.includes(areaCode)) {
+        setPhoneError("Phone number area code is not valid for US.");
+      } else {
+        setPhoneError("");
+      }
+    } else if (formData.phone.length > 0 && formData.phone.length < 10) {
+      setPhoneError("Phone number must be exactly 10 digits.");
+    } else {
+      setPhoneError("");
+    }
+  }, [formData.phone]);
+
+  // Email validation effect
+  useEffect(() => {
+    const validateEmailFormat = (email) => {
+      // Basic format check
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    };
+
+    if (formData.email) {
+      if (!validateEmailFormat(formData.email)) {
+        setEmailError("Invalid email format.");
+        return;
+      }
+      // Extract domain after @
+      const domain = formData.email.split("@")[1];
+      if (domain) {
+        fetch(`https://8.8.8.8/resolve?name=${domain}&type=MX`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.Status === 3) {
+              setEmailError("Invalid email address.");
+            } else {
+              setEmailError("");
+            }
+          })
+          .catch(() => setEmailError("Could not verify email address."));
+      }
+    } else {
+      setEmailError("");
+    }
+  }, [formData.email]);
+
+  // Auto-fill city after zip/state match
+  useEffect(() => {
+    // Only run if zip is valid and matches selected state
+    if (
+      formData.zipCode.length === 5 &&
+      formData.state &&
+      !zipError // zipError is empty, so zip/state match
+    ) {
+      fetch(`https://api.zippopotam.us/us/${formData.zipCode}`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Invalid zip");
+          return res.json();
+        })
+        .then((data) => {
+          if (data.places && data.places.length > 0) {
+            setFormData((prev) => ({
+              ...prev,
+              city: data.places[0]["place name"],
+            }));
+          }
+        })
+        .catch(() => {
+          // Optionally clear city if zip is invalid
+          setFormData((prev) => ({
+            ...prev,
+            city: "",
+          }));
+        });
+    }
+  }, [formData.zipCode, formData.state, zipError]);
 
   return (
     <div className="container mx-auto px-6 py-12 pt-24">
@@ -638,141 +749,6 @@ const ServiceDetails = () => {
       <div className="max-w-4xl mx-auto">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ">
-            {/* First Name */}
-            <div className="mb-1">
-              <label
-                htmlFor="firstName"
-                className="block text-[#1f2020] font-medium"
-              >
-                First Name
-              </label>
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
-                required
-              />
-            </div>
-
-            {/* Last Name */}
-            <div className="mb-4">
-              <label
-                htmlFor="lastName"
-                className="block text-[#1f2020] font-medium"
-              >
-                Last Name
-              </label>
-              <input
-                type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
-                required
-              />
-            </div>
-
-            {/* Email */}
-            <div className="mb-4">
-              <label
-                htmlFor="email"
-                className="block text-[#1f2020] font-medium"
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
-                required
-              />
-            </div>
-            {/* Phone Number */}
-            <div className="mb-4">
-              <label
-                htmlFor="phone"
-                className="block text-[#1f2020] font-medium"
-              >
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={(e) => {
-                  const value = e.target.value;
-
-                  // Allow only numeric input and limit to 10 digits
-                  if (/^\d*$/.test(value)) {
-                    setFormData((prevData) => ({
-                      ...prevData,
-                      phone: value.slice(0, 10), // Limit to 10 characters
-                    }));
-                  }
-                }}
-                className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
-                required
-              />
-
-              {/* Error Messages */}
-              {formData.phone.length > 10 && (
-                <p className="text-red-600 text-sm mt-1">
-                  Phone number must not exceed 10 digits.
-                </p>
-              )}
-              {formData.phone.length > 0 && formData.phone.length < 10 && (
-                <p className="text-red-600 text-sm mt-1">
-                  Phone number must be exactly 10 digits.
-                </p>
-              )}
-            </div>
-
-            {/* Street Address */}
-            <div className="mb-4">
-              <label
-                htmlFor="streetAddress"
-                className="block text-[#1f2020] font-medium"
-              >
-                Street Address
-              </label>
-              <input
-                type="text"
-                id="streetAddress"
-                name="streetAddress"
-                value={formData.streetAddress}
-                onChange={handleChange}
-                className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
-                required
-              />
-            </div>
-
-            {/* City */}
-            <div className="mb-4">
-              <label
-                htmlFor="city"
-                className="block text-[#1f2020] font-medium"
-              >
-                City
-              </label>
-              <input
-                type="text"
-                id="city"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
-                required
-              />
-            </div>
-
             {/* State */}
             <div className="mb-4">
               <label
@@ -840,6 +816,9 @@ const ServiceDetails = () => {
                 <option value="West Virginia">West Virginia</option>
                 <option value="Wisconsin">Wisconsin</option>
                 <option value="Wyoming">Wyoming</option>
+                <option value="Washington DC">Washington DC</option>
+                <option value="Puerto Rico">Puerto Rico</option>
+                <option value="Virgin Islands">Virgin Islands</option>
               </select>
             </div>
 
@@ -858,19 +837,16 @@ const ServiceDetails = () => {
                 value={formData.zipCode}
                 onChange={(e) => {
                   const value = e.target.value;
-
-                  // Allow numeric input but enforce 5-digit length
                   if (/^\d*$/.test(value)) {
                     setFormData((prevData) => ({
                       ...prevData,
-                      zipCode: value.slice(0, 5), // Limit input to 5 characters
+                      zipCode: value.slice(0, 5),
                     }));
                   }
                 }}
                 className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
                 required
               />
-
               {/* Error Messages */}
               {formData.zipCode.length > 5 && (
                 <p className="text-red-600 text-sm mt-1">
@@ -882,6 +858,47 @@ const ServiceDetails = () => {
                   Zip Code must be exactly 5 digits.
                 </p>
               )}
+              {zipError && (
+                <p className="text-red-600 text-sm mt-1">{zipError}</p>
+              )}
+            </div>
+
+            {/* City */}
+            <div className="mb-4">
+              <label
+                htmlFor="city"
+                className="block text-[#1f2020] font-medium"
+              >
+                City
+              </label>
+              <input
+                type="text"
+                id="city"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
+                required
+              />
+            </div>
+
+            {/* Street Address */}
+            <div className="mb-4">
+              <label
+                htmlFor="streetAddress"
+                className="block text-[#1f2020] font-medium"
+              >
+                Street Address
+              </label>
+              <input
+                type="text"
+                id="streetAddress"
+                name="streetAddress"
+                value={formData.streetAddress}
+                onChange={handleChange}
+                className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
+                required
+              />
             </div>
           </div>
           {/* Wrapper for the form */}
@@ -1057,27 +1074,26 @@ const ServiceDetails = () => {
             <div className="text-center">
               <button
                 type="submit"
-                className="btn w-full bg-[#ffb000] text-black transition duration-300 flex items-center justify-center"
-                disabled={loading}
+                className={`btn w-full bg-[#ffb000] text-black transition duration-300 flex items-center justify-center ${!isUS ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={loading || !isUS || !!zipError || !!phoneError || !!emailError}
                 onClick={(e) => {
-                  // Check if any required service-specific field is empty
                   const requiredFields =
                     service?.inputs?.map((input) => input.question) || [];
                   const emptyFields = requiredFields.some(
                     (field) => !formData[field]
                   );
-
-                  // Validation checks
                   if (
                     formData.zipCode.length < 5 ||
                     formData.phone.length < 10 ||
                     !formData.agreement ||
-                    emptyFields
+                    emptyFields ||
+                    !isUS ||
+                    !!zipError
                   ) {
-                    e.preventDefault(); // Prevent submission
-                    setShowError(true); // Show error message
+                    e.preventDefault();
+                    setShowError(true);
                   } else {
-                    setShowError(false); // Clear error message
+                    setShowError(false);
                   }
                 }}
                 onKeyDown={(e) => {
@@ -1088,17 +1104,18 @@ const ServiceDetails = () => {
                     const emptyFields = requiredFields.some(
                       (field) => !formData[field]
                     );
-
                     if (
                       formData.zipCode.length < 5 ||
                       formData.phone.length < 10 ||
                       !formData.agreement ||
-                      emptyFields
+                      emptyFields ||
+                      !isUS ||
+                      !!zipError
                     ) {
                       setShowError(true);
                     } else {
                       setShowError(false);
-                      e.target.click(); // Simulate button click
+                      e.target.click();
                     }
                   }
                 }}
@@ -1115,7 +1132,6 @@ const ServiceDetails = () => {
                   "Get My Consultation"
                 )}
               </button>
-
               {/* Error Messages */}
               {showError && (
                 <p className="text-red-600 text-sm mt-1">
@@ -1124,6 +1140,11 @@ const ServiceDetails = () => {
               )}
               {apiError && (
                 <p className="text-red-600 text-sm mt-1">{apiError}</p>
+              )}
+              {!isUS && ipChecked && (
+                <p className="text-red-600 text-sm mt-2">
+                  This service is only for US citizens.
+                </p>
               )}
             </div>
           </div>
@@ -1173,3 +1194,33 @@ const ServiceDetails = () => {
 };
 
 export default ServiceDetails;
+
+const areaCodesUS = [
+  205,251,256,334,659,907,480,520,602,623,928,479,501,870,209,213,279,310,323,341,408,415,424,442,510,530,559,
+  562,619,626,650,657,661,669,707,714,747,760,805,818,820,831,858,909,916,925,949,951,628,303,719,720,970,
+  203,475,860,959,302,202,239,305,321,352,386,407,561,689,727,754,772,786,813,850,863,904,941,954,229,404,
+  470,478,678,706,762,770,912,808,208,986,217,224,309,312,331,464,618,630,708,773,815,847,872,219,260,317,
+  463,574,765,812,930,319,515,563,641,712,316,620,785,913,270,364,502,606,859,225,318,337,504,985,207,240,
+  301,410,443,667,339,351,413,508,617,774,781,857,978,231,248,269,313,517,586,616,734,810,906,947,989,218,
+  320,507,612,651,763,952,228,601,662,769,314,417,573,636,660,816,406,308,402,531,702,725,775,603,201,551,
+  609,640,732,848,856,862,908,973,505,575,212,315,332,347,516,518,585,607,631,646,716,718,838,845,914,917,
+  929,934,252,336,704,743,828,910,919,980,984,701,216,220,234,330,380,419,440,513,567,614,740,937,405,539,
+  580,918,458,503,541,971,215,223,267,272,412,445,484,570,610,717,724,814,878,401,803,839,843,854,864,605,
+  423,615,629,731,865,901,931,210,214,254,281,325,346,361,409,430,432,469,512,682,713,726,737,806,817,830,
+  832,903,915,936,940,945,956,972,979,385,435,801,802,276,434,540,571,703,757,804,826,948,206,253,360,425,
+  509,564,304,681,262,414,534,608,715,920,307,787,939,340
+];
+
+// Helper for state abbreviation
+const stateAbbreviations = {
+  "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA", "Colorado": "CO",
+  "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA", "Hawaii": "HI", "Idaho": "ID",
+  "Illinois": "IL", "Indiana": "IN", "Iowa": "IA", "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA",
+  "Maine": "ME", "Maryland": "MD", "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN",
+  "Mississippi": "MS", "Missouri": "MO", "Montana": "MT", "Nebraska": "NE", "Nevada": "NV",
+  "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY", "North Carolina": "NC",
+  "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK", "Oregon": "OR", "Pennsylvania": "PA",
+  "Rhode Island": "RI", "South Carolina": "SC", "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX",
+  "Utah": "UT", "Vermont": "VT", "Virginia": "VA", "Washington": "WA", "West Virginia": "WV",
+  "Wisconsin": "WI", "Wyoming": "WY", "Washington DC": "DC", "Puerto Rico": "PR", "Virgin Islands": "VI"
+};
