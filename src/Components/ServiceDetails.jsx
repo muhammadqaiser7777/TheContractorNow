@@ -749,6 +749,109 @@ const ServiceDetails = () => {
       <div className="max-w-4xl mx-auto">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ">
+             {/* First Name */}
+             <div className="mb-4">
+               <label
+                 htmlFor="firstName"
+                 className="block text-[#1f2020] font-medium"
+               >
+                 First Name
+               </label>
+               <input
+                 type="text"
+                 id="firstName"
+                 name="firstName"
+                 value={formData.firstName}
+                 onChange={(e) => {
+                   const value = e.target.value;
+                   if (/^[A-Za-z\s]*$/.test(value)) {
+                     setFormData((prevData) => ({
+                       ...prevData,
+                       firstName: value,
+                     }));
+                   }
+                 }}
+                 className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
+                 required
+               />
+             </div>
+
+             {/* Last Name */}
+             <div className="mb-4">
+               <label
+                 htmlFor="lastName"
+                 className="block text-[#1f2020] font-medium"
+               >
+                 Last Name
+               </label>
+               <input
+                 type="text"
+                 id="lastName"
+                 name="lastName"
+                 value={formData.lastName}
+                 onChange={(e) => {
+                   const value = e.target.value;
+                   if (/^[A-Za-z\s]*$/.test(value)) {
+                     setFormData((prevData) => ({
+                       ...prevData,
+                       lastName: value,
+                     }));
+                   }
+                 }}
+                 className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
+                 required
+               />
+             </div>
+
+             {/* Phone */}
+             <div className="mb-4">
+               <label
+                 htmlFor="phone"
+                 className="block text-[#1f2020] font-medium"
+               >
+                 Phone
+               </label>
+               <input
+                 type="tel"
+                 id="phone"
+                 name="phone"
+                 value={formData.phone}
+                 onChange={(e) => {
+                   const value = e.target.value.replace(/\D/g, '');
+                   setFormData((prevData) => ({
+                     ...prevData,
+                     phone: value.slice(0, 10),
+                   }));
+                 }}
+                 className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
+                 required
+               />
+               {phoneError && (
+                 <p className="text-red-600 text-sm mt-1">{phoneError}</p>
+               )}
+             </div>
+
+             {/* Email */}
+             <div className="mb-4">
+               <label
+                 htmlFor="email"
+                 className="block text-[#1f2020] font-medium"
+               >
+                 Email
+               </label>
+               <input
+                 type="email"
+                 id="email"
+                 name="email"
+                 value={formData.email}
+                 onChange={handleChange}
+                 className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
+                 required
+               />
+               {emailError && (
+                 <p className="text-red-600 text-sm mt-1">{emailError}</p>
+               )}
+             </div>
             {/* State */}
             <div className="mb-4">
               <label
@@ -1075,7 +1178,7 @@ const ServiceDetails = () => {
               <button
                 type="submit"
                 className={`btn w-full bg-[#ffb000] text-black transition duration-300 flex items-center justify-center ${!isUS ? "opacity-50 cursor-not-allowed" : ""}`}
-                disabled={loading || !isUS || !!zipError || !!phoneError || !!emailError}
+                disabled={loading || !isUS || !!zipError || !!phoneError || !!emailError || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()}
                 onClick={(e) => {
                   const requiredFields =
                     service?.inputs?.map((input) => input.question) || [];
@@ -1088,7 +1191,12 @@ const ServiceDetails = () => {
                     !formData.agreement ||
                     emptyFields ||
                     !isUS ||
-                    !!zipError
+                    !!zipError ||
+                    !formData.firstName.trim() ||
+                    !formData.lastName.trim() ||
+                    !formData.email.trim() ||
+                    !!emailError ||
+                    !!phoneError
                   ) {
                     e.preventDefault();
                     setShowError(true);
@@ -1110,7 +1218,12 @@ const ServiceDetails = () => {
                       !formData.agreement ||
                       emptyFields ||
                       !isUS ||
-                      !!zipError
+                      !!zipError ||
+                      !formData.firstName.trim() ||
+                      !formData.lastName.trim() ||
+                      !formData.email.trim() ||
+                      !!emailError ||
+                      !!phoneError
                     ) {
                       setShowError(true);
                     } else {
