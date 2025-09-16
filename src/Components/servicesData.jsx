@@ -524,6 +524,10 @@ export const allServices = [
           "Unsure/Not Listed",
         ],
       },
+      {
+        question: "What is the nature of your project?",
+        options: ["New", "Repair", "Replace"],
+      },
     ],
   },
   {
