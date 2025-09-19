@@ -464,9 +464,13 @@ const ServiceDetails = () => {
     formDataObj = {
       ...formDataObj,
       category: service.category,
-      TcpaText: "By providing my phone number, I consent to receive marketing calls and/or text messages, including from automated systems, at the phone number provided, from The Contractor Now and its affiliates. I understand that consent is not required for purchase. I also understand that message and data rates may apply. I can revoke my consent at any time by replying “STOP” to any text message or contacting PingTree Systems directly. For more information, please refer to PTS's Privacy Policy.",
-      state_abbr: stateAbbreviations[formData.state] || ""
+      TcpaText: "By providing my phone number, I consent to receive marketing calls and/or text messages, including from automated systems, at the phone number provided, from The Contractor Now and its affiliates. I understand that consent is not required for purchase. I also understand that message and data rates may apply. I can revoke my consent at any time by replying \"STOP\" to any text message or contacting PingTree Systems directly. For more information, please refer to PTS's Privacy Policy."
     };
+
+    // Replace state with abbreviation
+    if (formDataObj.state) {
+      formDataObj.state = stateAbbreviations[formDataObj.state] || "";
+    }
 
     setLoading(true);
     setApiError("");
