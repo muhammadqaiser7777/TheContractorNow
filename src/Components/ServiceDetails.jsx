@@ -9,6 +9,14 @@ const ServiceDetails = () => {
   const { title } = useParams(); // Extract the service title from the route params
   const location = useLocation(); // Access location state
   const navigate = useNavigate();
+
+  const [showError, setShowError] = useState(false);
+
+  // Provider search states
+  const [providerSuggestions, setProviderSuggestions] = useState([]);
+  const [providerInput, setProviderInput] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState(null);
+
   // Normalize the title param to lower case for case-insensitive matching
   const decodedTitle = decodeURIComponent(title || "").toLowerCase();
   const service = allServices.find(
@@ -27,8 +35,6 @@ const ServiceDetails = () => {
       </div>
     );
   }
-
-  const [showError, setShowError] = useState(false);
 
   // Initialize form data state
   const [formData, setFormData] = useState({
@@ -58,6 +64,8 @@ const ServiceDetails = () => {
     min: "",
     ipAddress: "",
     userAgent: "",
+    electricalEnergyProviderId: "",
+    electricalEnergyProvider: "",
   });
 
   // Update formData.url when the location changes
@@ -188,6 +196,30 @@ const ServiceDetails = () => {
       }));
     }
   }, []);
+
+  const fetchProviders = async (query) => {
+    if (query.length < 2) {
+      setProviderSuggestions([]);
+      return;
+    }
+    try {
+      const response = await fetch(`https://steermarketeer.com/API/providers.php?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+      // Sort by matching: put exact matches first
+      const sorted = data.sort((a, b) => {
+        const aIndex = a.name.toLowerCase().indexOf(query.toLowerCase());
+        const bIndex = b.name.toLowerCase().indexOf(query.toLowerCase());
+        if (aIndex === -1 && bIndex === -1) return 0;
+        if (aIndex === -1) return 1;
+        if (bIndex === -1) return -1;
+        return aIndex - bIndex;
+      });
+      setProviderSuggestions(sorted);
+    } catch (error) {
+      console.error('Error fetching providers:', error);
+      setProviderSuggestions([]);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -350,7 +382,8 @@ const ServiceDetails = () => {
               mappedData["ProjectNature"] = answer;
             }
           } else if (question === "Who is your energy provider?") {
-            mappedData["ElectricalEnergyProvider"] = answer;
+            mappedData["ElectricalEnergyProviderId"] = formData.electricalEnergyProviderId;
+            mappedData["ElectricalEnergyProvider"] = formData.electricalEnergyProvider;
           } else if (question === "Project status?") {
             mappedData["ProjectStatus"] = answer === "Ready to hire" ? 1 : 2;
           } else {
@@ -511,7 +544,12 @@ const ServiceDetails = () => {
           min: formData.min,
           ipAddress: formData.ipAddress,
           userAgent: formData.userAgent,
+          electricalEnergyProviderId: "",
+          electricalEnergyProvider: "",
         });
+        setProviderInput("");
+        setSelectedProvider(null);
+        setProviderSuggestions([]);
         navigate("/thankYou");
         return;
       }
@@ -669,79 +707,118 @@ const ServiceDetails = () => {
                   <label className="block text-[#1f2020] font-medium mb-2">
                     {input.question}
                   </label>
-              {input.options ? (
-                <select
-                  name={input.question}
-                  value={formData[input.question] || ""}
-                  onChange={handleChange}
-                  className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
-                  required
-                >
-                  <option value="">Select an option</option>
-                  {input.options.map((option, idx) => (
-                    <option key={idx} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              ) : input.type === "date" ? (
-                <input
-                  type="date"
-                  name={input.question}
-                  value={formData[input.question] || ""}
-                  onChange={handleChange}
-                  className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
-                  required
-                  min={input.question === "When are you planning to move" ? new Date().toISOString().split('T')[0] : undefined}
-                />
-              ) : (
-                    <input
-                      type="text"
+                  {input.question === "Who is your energy provider?" ? (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={providerInput}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setProviderInput(value);
+                          fetchProviders(value);
+                          if (selectedProvider && selectedProvider.name !== value) {
+                            setSelectedProvider(null);
+                            setFormData(prev => ({...prev, electricalEnergyProviderId: "", electricalEnergyProvider: ""}));
+                          }
+                        }}
+                        className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
+                        required
+                        placeholder="Type to search energy providers"
+                      />
+                      {selectedProvider && <span className="text-sm text-gray-500 ml-2">ID: {selectedProvider.id}</span>}
+                      {providerSuggestions.length > 0 && (
+                        <ul className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                          {providerSuggestions.map((suggestion) => (
+                            <li
+                              key={suggestion.id}
+                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => {
+                                setSelectedProvider(suggestion);
+                                setProviderInput(suggestion.name);
+                                setProviderSuggestions([]);
+                                setFormData(prev => ({...prev, electricalEnergyProviderId: suggestion.id, electricalEnergyProvider: suggestion.name}));
+                              }}
+                            >
+                              {suggestion.name}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className="text-sm text-gray-500 mt-1">If not sure, type Other</p>
+                    </div>
+                  ) : input.options ? (
+                    <select
                       name={input.question}
                       value={formData[input.question] || ""}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (
-                          input.question === "Current zip code" ||
-                          input.question === "Moving zip code" ||
-                          input.question.toLowerCase().includes("zip code")
-                        ) {
-                          // Only allow numeric input and max 5 digits
-                          if (/^\d*$/.test(value)) {
-                            setFormData((prevData) => ({
-                              ...prevData,
-                              [input.question]: value.slice(0, 5),
-                            }));
-                          }
-                        } else {
-                          handleChange(e);
-                        }
-                      }}
+                      onChange={handleChange}
                       className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
                       required
-                      placeholder={
-                        input.question === "Current zip code" ||
-                        input.question === "Moving zip code" ||
-                        input.question.toLowerCase().includes("zip code")
-                          ? "Enter 5-digit zip code"
-                          : ""
-                      }
-                      pattern={
-                        input.question === "Current zip code" ||
-                        input.question === "Moving zip code" ||
-                        input.question.toLowerCase().includes("zip code")
-                          ? "\\d{5}"
-                          : undefined
-                      }
-                      title={
-                        input.question === "Current zip code" ||
-                        input.question === "Moving zip code" ||
-                        input.question.toLowerCase().includes("zip code")
-                          ? "Must be 5 digits"
-                          : undefined
-                      }
+                    >
+                      <option value="">Select an option</option>
+                      {input.options.map((option, idx) => (
+                        <option key={idx} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : input.type === "date" ? (
+                    <input
+                      type="date"
+                      name={input.question}
+                      value={formData[input.question] || ""}
+                      onChange={handleChange}
+                      className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
+                      required
+                      min={input.question === "When are you planning to move" ? new Date().toISOString().split('T')[0] : undefined}
                     />
-                  )}
+                  ) : (
+                        <input
+                          type="text"
+                          name={input.question}
+                          value={formData[input.question] || ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (
+                              input.question === "Current zip code" ||
+                              input.question === "Moving zip code" ||
+                              input.question.toLowerCase().includes("zip code")
+                            ) {
+                              // Only allow numeric input and max 5 digits
+                              if (/^\d*$/.test(value)) {
+                                setFormData((prevData) => ({
+                                  ...prevData,
+                                  [input.question]: value.slice(0, 5),
+                                }));
+                              }
+                            } else {
+                              handleChange(e);
+                            }
+                          }}
+                          className="w-full px-4 py-0.5 border-b-2 border-[#1f2020] rounded-md focus:outline-none focus:ring focus:primary"
+                          required
+                          placeholder={
+                            input.question === "Current zip code" ||
+                            input.question === "Moving zip code" ||
+                            input.question.toLowerCase().includes("zip code")
+                              ? "Enter 5-digit zip code"
+                              : ""
+                          }
+                          pattern={
+                            input.question === "Current zip code" ||
+                            input.question === "Moving zip code" ||
+                            input.question.toLowerCase().includes("zip code")
+                              ? "\\d{5}"
+                              : undefined
+                          }
+                          title={
+                            input.question === "Current zip code" ||
+                            input.question === "Moving zip code" ||
+                            input.question.toLowerCase().includes("zip code")
+                              ? "Must be 5 digits"
+                              : undefined
+                          }
+                        />
+                      )}
                 </div>
               ))}
             </div>
