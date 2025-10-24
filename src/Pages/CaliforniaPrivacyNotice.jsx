@@ -630,7 +630,7 @@ const CaliforniaPrivacyNotice = () => {
         your choices and rights regarding such use, or wish to exercise your
         rights under California law, please do not hesitate to contact us at:
         <span className="font-bold">Email:</span> TheContractorNow.com Postal
-        Address: TheContractorNow.com, 1500 Cehstnut St, Philadelphia, PA 19102
+        Address: TheContractorNow.com, 8 The Green Street B, Kent, DE, Dover, 19901, United States
       </div>
     </div>
   );
