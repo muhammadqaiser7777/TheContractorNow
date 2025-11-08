@@ -46,10 +46,10 @@ const ServiceDetails = () => {
     city: "",
     state: "",
     zipCode: passedZipCode,
-    ...service.inputs.reduce((acc, input) => {
+    ...(service?.inputs?.reduce((acc, input) => {
       acc[input.question] = ""; // Add service-specific questions to formData
       return acc;
-    }, {}),
+    }, {}) || {}),
     HomeOwner: "",
     PropertyType: "",
     PurchaseTimeFrame: "",
@@ -66,6 +66,8 @@ const ServiceDetails = () => {
     userAgent: "",
     electricalEnergyProviderId: "",
     electricalEnergyProvider: "",
+    universalLeadid: "",
+    xxTrustedFormCertUrl: "",
   });
 
   // Update formData.url when the location changes
@@ -114,87 +116,118 @@ const ServiceDetails = () => {
     }));
   }, []);
 
-  // Function to check if a script is already in the DOM
-  const isScriptAlreadyAdded = (src) => {
-    return document.querySelector(`script[src="${src}"]`) !== null;
-  };
 
-  // Add TrustedForm script dynamically
+  // Add TrustedForm script dynamically - only on service pages
   useEffect(() => {
+    if (!location.pathname.startsWith('/services/')) return;
+
+    // Clear existing TrustedForm input
+    const existingTFInput = document.querySelector('input[name="xxTrustedFormCertUrl"]');
+    if (existingTFInput) {
+      existingTFInput.value = '';
+    }
+
     const trustedFormSrc =
       (document.location.protocol === "https:" ? "https" : "http") +
       "://api.trustedform.com/trustedform.js?field=xxTrustedFormCertUrl&ping_field=xxTrustedFormPingUrl&l=" +
       new Date().getTime() +
       Math.random();
 
-    if (!isScriptAlreadyAdded(trustedFormSrc)) {
-      const trustedFormScript = document.createElement("script");
-      trustedFormScript.type = "text/javascript";
-      trustedFormScript.async = true;
-      trustedFormScript.src = trustedFormSrc;
-
-      document.body.appendChild(trustedFormScript);
-
-      return () => {
-        if (document.body.contains(trustedFormScript)) {
-          document.body.removeChild(trustedFormScript);
-        }
-      };
+    // Remove existing script if any
+    const existingTrustedForm = document.querySelector(`script[src*="${trustedFormSrc.split('?')[0]}"]`);
+    if (existingTrustedForm) {
+      document.body.removeChild(existingTrustedForm);
     }
-  }, []);
 
-  // Add LeadiD script dynamically
+    const trustedFormScript = document.createElement("script");
+    trustedFormScript.type = "text/javascript";
+    trustedFormScript.async = true;
+    trustedFormScript.src = trustedFormSrc;
+
+    document.body.appendChild(trustedFormScript);
+
+    return () => {
+      if (document.body.contains(trustedFormScript)) {
+        document.body.removeChild(trustedFormScript);
+      }
+    };
+  }, [location.pathname]); // Reload on URL path change
+
+  // Add LeadiD script dynamically - only on service pages
   useEffect(() => {
+    if (!location.pathname.startsWith('/services/')) return;
+
+    // Clear existing leadid_token value
+    const existingLeadiDInput = document.getElementById('leadid_token');
+    if (existingLeadiDInput) {
+      existingLeadiDInput.value = '';
+    }
+
     const leadiDScriptSrc =
       "//create.lidstatic.com/campaign/548c86c2-3c24-2ec2-b201-274ffb0f5005.js?snippet_version=2";
 
-    if (!isScriptAlreadyAdded(leadiDScriptSrc)) {
-      const leadiDScript = document.createElement("script");
-      leadiDScript.id = "LeadiDscript_campaign";
-      leadiDScript.type = "text/javascript";
-      leadiDScript.async = true;
-      leadiDScript.src = leadiDScriptSrc;
-
-      document.body.appendChild(leadiDScript);
-
-      return () => {
-        if (document.body.contains(leadiDScript)) {
-          document.body.removeChild(leadiDScript);
-        }
-      };
+    // Remove existing script if any
+    const existingLeadiD = document.querySelector(`script[src="${leadiDScriptSrc}"]`);
+    if (existingLeadiD) {
+      document.body.removeChild(existingLeadiD);
     }
-  }, []);
+
+    const leadiDScript = document.createElement("script");
+    leadiDScript.id = "LeadiDscript_campaign";
+    leadiDScript.type = "text/javascript";
+    leadiDScript.async = true;
+    leadiDScript.src = leadiDScriptSrc;
+
+    document.body.appendChild(leadiDScript);
+
+    // Poll every 2 seconds for leadid_token until it has a value
+    const pollInterval = setInterval(() => {
+      const leadiDInput = document.getElementById('leadid_token');
+      if (leadiDInput && leadiDInput.value) {
+        setFormData((prevData) => ({
+          ...prevData,
+          universalLeadid: leadiDInput.value,
+        }));
+        clearInterval(pollInterval);
+      }
+    }, 2000);
+
+    return () => {
+      if (document.body.contains(leadiDScript)) {
+        document.body.removeChild(leadiDScript);
+      }
+      clearInterval(pollInterval);
+    };
+  }, [location.pathname]); // Reload on URL path change
 
   // Store affiliate params only on first load
   const affiliateParamsRef = useRef(null);
 
   useEffect(() => {
-    // Only run on first mount
-    if (!affiliateParamsRef.current) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const paramsToStore = {};
-      // Store all query params
-      for (const [key, value] of urlParams.entries()) {
-        paramsToStore[key] = value;
-      }
-      affiliateParamsRef.current = paramsToStore;
-
-      // Remove query params from URL (clean URL)
-      if (window.history.replaceState) {
-        const cleanUrl =
-          window.location.origin +
-          window.location.pathname +
-          window.location.hash;
-        window.history.replaceState({}, document.title, cleanUrl);
-      }
-
-      // Optionally, set them in formData if you want to use them in the UI
-      setFormData((prevData) => ({
-        ...prevData,
-        ...paramsToStore,
-        url: window.location.origin + window.location.pathname, // Clean URL
-      }));
+    // Always run to refresh params on each visit
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramsToStore = {};
+    // Store all query params
+    for (const [key, value] of urlParams.entries()) {
+      paramsToStore[key] = value;
     }
+    affiliateParamsRef.current = paramsToStore;
+
+    // Remove query params from URL (clean URL)
+    if (window.history.replaceState) {
+      const cleanUrl =
+        window.location.origin +
+        window.location.pathname +
+        window.location.hash;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    // Set them in formData
+    setFormData((prevData) => ({
+      ...prevData,
+      ...paramsToStore,
+      url: window.location.origin + window.location.pathname, // Clean URL
+    }));
   }, []);
 
   const fetchProviders = async (query) => {
@@ -257,17 +290,15 @@ const ServiceDetails = () => {
     if (tfInput && tfInput.value) {
       formDataObj.xxTrustedFormCertUrl = tfInput.value;
     } else {
-      formDataObj.xxTrustedFormCertUrl = '';
+      formDataObj.xxTrustedFormCertUrl = formData.xxTrustedFormCertUrl || '';
     }
 
     // Get LeadiD token value and send as universalLeadid
     const leadiDInput = document.getElementById('leadid_token');
     if (leadiDInput && leadiDInput.value) {
       formDataObj.universalLeadid = leadiDInput.value;
-    } else if (formData.universalLeadid) {
-      formDataObj.universalLeadid = formData.universalLeadid;
     } else {
-      formDataObj.universalLeadid = '';
+      formDataObj.universalLeadid = formData.universalLeadid || '';
     }
 
     // Dynamic mapping for service-specific questions
@@ -517,6 +548,10 @@ const ServiceDetails = () => {
       });
       setLoading(false);
       if (response.status === 200) {
+        // Clear localStorage and sessionStorage
+        localStorage.clear();
+        sessionStorage.clear();
+
         setFormData({
           firstName: "",
           lastName: "",
@@ -536,16 +571,18 @@ const ServiceDetails = () => {
           BestTimeToCall: "",
           "Brief data about requirements": "",
           agreement: false,
-          affid: formData.affid,
-          rid: formData.rid,
-          tid: formData.tid,
-          url: formData.url,
-          start: formData.start,
-          min: formData.min,
-          ipAddress: formData.ipAddress,
-          userAgent: formData.userAgent,
+          affid: "",
+          rid: "",
+          tid: "",
+          url: "",
+          start: "",
+          min: "",
+          ipAddress: "",
+          userAgent: "",
           electricalEnergyProviderId: "",
           electricalEnergyProvider: "",
+          universalLeadid: "",
+          xxTrustedFormCertUrl: "",
         });
         setProviderInput("");
         setSelectedProvider(null);
@@ -683,6 +720,8 @@ const ServiceDetails = () => {
 
   return (
     <div className="container mx-auto px-6 py-12 pt-24">
+      {/* Universal Lead ID Fallback */}
+      <img src='//create.leadid.com/noscript.gif?lac=6B96394A-E3F0-75F4-8748-80CB63C352C2&lck=548c86c2-3c24-2ec2-b201-274ffb0f5005&snippet_version=2' style={{display: 'none'}} />
       {/* Jornaya LeadiD Token Hidden Input */}
       <input type="hidden" id="leadid_token" name="universalLeadid" />
       {/* Service Title Section */}
@@ -716,6 +755,7 @@ const ServiceDetails = () => {
                           const value = e.target.value;
                           setProviderInput(value);
                           fetchProviders(value);
+                          setFormData(prev => ({...prev, ["Who is your energy provider?"]: value}));
                           if (selectedProvider && selectedProvider.name !== value) {
                             setSelectedProvider(null);
                             setFormData(prev => ({...prev, electricalEnergyProviderId: "", electricalEnergyProvider: ""}));
@@ -1263,7 +1303,7 @@ const ServiceDetails = () => {
                   const requiredFields =
                     service?.inputs?.map((input) => input.question) || [];
                   const emptyFields = requiredFields.some(
-                    (field) => !formData[field]
+                    (field) => !formData[field] || formData[field] === ""
                   );
                   if (
                     formData.zipCode.length < 5 ||
@@ -1290,7 +1330,7 @@ const ServiceDetails = () => {
                     const requiredFields =
                       service?.inputs?.map((input) => input.question) || [];
                     const emptyFields = requiredFields.some(
-                      (field) => !formData[field]
+                      (field) => !formData[field] || formData[field] === ""
                     );
                     if (
                       formData.zipCode.length < 5 ||
