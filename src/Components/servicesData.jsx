@@ -19,6 +19,7 @@ export const allServices = [
           "600$",
           "700$",
           "800$",
+          "900$",
           "More than 900$",
         ],
       },
