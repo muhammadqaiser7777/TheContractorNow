@@ -8,7 +8,7 @@ export const allServices = [
     image: "/assets/images/solar-panel.gif",
     inputs: [
       {
-        question: "How much is your currency bill?",
+        question: "How much is your electricity bill?",
         options: [
           "50$",
           "100$",

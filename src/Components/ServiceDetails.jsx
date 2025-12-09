@@ -392,7 +392,7 @@ const ServiceDetails = () => {
             const opts = input.options || [];
             const idx = opts.indexOf(answer);
             mappedData["windowsType"] = idx >= 0 ? idx + 1 : answer;
-          } else if (question === "How much is your currency bill?") {
+          } else if (question === "How much is your electricity bill?") {
             // Map to SolarCurrencyBill as 1-11 based on option index+1
             const opts = input.options || [];
             const idx = opts.indexOf(answer);
