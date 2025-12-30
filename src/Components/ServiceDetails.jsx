@@ -524,22 +524,30 @@ const ServiceDetails = () => {
       }
     }
 
+    // Determine formType based on selected service
+    let formType = service.title.toLowerCase();
+    if (formType === 'homesecurity') {
+      formType = 'home_security';
+    }
+
     // Add final API payload fields
     formDataObj = {
       ...formDataObj,
       category: service.category,
-      TcpaText: "By providing my phone number, I consent to receive marketing calls and/or text messages, including from automated systems, at the phone number provided, from The Contractor Now and its affiliates. I understand that consent is not required for purchase. I also understand that message and data rates may apply. I can revoke my consent at any time by replying \"STOP\" to any text message or contacting PingTree Systems directly. For more information, please refer to PTS's Privacy Policy."
+      formType: formType,
+      TcpaText: 'By clicking GET YOUR QUOTE, I agree to the Terms of Service and Privacy Policy, I authorize home improvement companies, their contractors, and Partner Companies to contact me about home improvement offers by phone calls and text messages to the number I provided. I authorize that these marketing communications may be delivered to me using an automatic telephone dialing system or by prerecorded message. I understand that my consent is not a condition of purchase, and I may revoke that consent at any time. Mobile and data charges may apply. California Residents.',
     };
 
     // Replace state with abbreviation
     if (formDataObj.state) {
       formDataObj.state = stateAbbreviations[formDataObj.state] || "";
+
     }
 
     setLoading(true);
     setApiError("");
     try {
-      const response = await fetch("https://thecontractornow.com/api/ping-proxy.php", {
+      const response = await fetch("https://thecontractornow.com/server/forward-lead", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1298,7 +1306,7 @@ const ServiceDetails = () => {
               <button
                 type="submit"
                 className={`btn w-full bg-[#ffb000] text-black transition duration-300 flex items-center justify-center ${!isUS ? "opacity-50 cursor-not-allowed" : ""}`}
-                disabled={loading || !isUS || !!zipError || !!phoneError || !!emailError || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()}
+                disabled={loading || !!zipError || !!phoneError || !!emailError || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()}
                 onClick={(e) => {
                   const requiredFields =
                     service?.inputs?.map((input) => input.question) || [];
@@ -1310,7 +1318,6 @@ const ServiceDetails = () => {
                     formData.phone.length < 10 ||
                     !formData.agreement ||
                     emptyFields ||
-                    !isUS ||
                     !!zipError ||
                     !formData.firstName.trim() ||
                     !formData.lastName.trim() ||
@@ -1337,7 +1344,6 @@ const ServiceDetails = () => {
                       formData.phone.length < 10 ||
                       !formData.agreement ||
                       emptyFields ||
-                      !isUS ||
                       !!zipError ||
                       !formData.firstName.trim() ||
                       !formData.lastName.trim() ||
@@ -1373,11 +1379,6 @@ const ServiceDetails = () => {
               )}
               {apiError && (
                 <p className="text-red-600 text-sm mt-1">{apiError}</p>
-              )}
-              {!isUS && ipChecked && (
-                <p className="text-red-600 text-sm mt-2">
-                  This service is only for US citizens.
-                </p>
               )}
             </div>
           </div>
