@@ -644,7 +644,7 @@ const ServiceDetails = () => {
             setZipError("");
           }
         })
-        .catch(() => setZipError("Could not validate zip code."));
+        .catch(() => setZipError(""));
     }
   }, [formData.zipCode, formData.state]);
 
@@ -1305,7 +1305,7 @@ const ServiceDetails = () => {
             <div className="text-center">
               <button
                 type="submit"
-                className={`btn w-full bg-[#ffb000] text-black transition duration-300 flex items-center justify-center ${!isUS ? "opacity-50 cursor-not-allowed" : ""}`}
+                className="btn w-full bg-[#ffb000] text-black transition duration-300 flex items-center justify-center"
                 disabled={loading || !!zipError || !!phoneError || !!emailError || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()}
                 onClick={(e) => {
                   const requiredFields =
