@@ -1306,7 +1306,7 @@ const ServiceDetails = () => {
               <button
                 type="submit"
                 className="btn w-full bg-[#ffb000] text-black transition duration-300 flex items-center justify-center"
-                disabled={loading || !!zipError || !!phoneError || !!emailError || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()}
+                disabled={loading || !!zipError || !!phoneError || !!emailError || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || !formData.agreement || !formData.state || !formData.city || !formData.streetAddress || formData.zipCode.length !== 5 || formData.phone.length !== 10 || !formData.HomeOwner || !formData.PropertyType || !formData.PurchaseTimeFrame || !formData.BestTimeToCall || !formData["Brief data about requirements"] || (service?.inputs?.some(input => !formData[input.question] || formData[input.question] === "") ? true : false) || (service?.inputs?.some(input => input.question === "Who is your energy provider?") && !formData.electricalEnergyProvider)}
                 onClick={(e) => {
                   const requiredFields =
                     service?.inputs?.map((input) => input.question) || [];
