@@ -155,12 +155,16 @@ export const allServices = [
   },
   {
     id: 5,
-    category: 13,    
+    category: 13,
     title: "Painting",
     description:
       "Transform your space with our expert painting services. We deliver flawless finishes and vibrant colors that breathe life into your home or business.",
     image: "/assets/images/painter.gif",
     inputs: [
+      {
+        question: "What is the nature of your project?",
+        options: ["New", "Repair", "Replace"],
+      },
       {
         question: "Type of painting needed",
         options: [
@@ -256,6 +260,10 @@ export const allServices = [
       "Secure your peace of mind with our advanced home security systems. Protect your loved ones with cutting-edge technology and professional installation.",
     image: "/assets/images/home Security.gif",
     inputs: [
+      {
+        question: "What is the nature of your project?",
+        options: ["New", "Repair", "Replace"],
+      },
       {
         question: "Type of service needed",
         options: [
@@ -379,6 +387,10 @@ export const allServices = [
     image: "/assets/images/fences.gif",
     inputs: [
       {
+        question: "What is the nature of your project?",
+        options: ["New", "Repair", "Replace"],
+      },
+      {
         question: "Type of fencing project?",
         options: [
           "Wood Fence Install/Replace",
@@ -411,6 +423,10 @@ export const allServices = [
       "Upgrade your home with our premium flooring services. From hardwood to tiles, we offer elegant, durable, and cost-effective solutions for every space.",
     image: "/assets/images/flooring.gif",
     inputs: [
+      {
+        question: "What is the nature of your project?",
+        options: ["New", "Repair", "Replace"],
+      },
       {
         question: "Floor Type?",
         options: [

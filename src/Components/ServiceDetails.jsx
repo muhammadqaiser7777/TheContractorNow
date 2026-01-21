@@ -11,6 +11,7 @@ const ServiceDetails = () => {
   const navigate = useNavigate();
 
   const [showError, setShowError] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   // Provider search states
   const [providerSuggestions, setProviderSuggestions] = useState([]);
@@ -270,6 +271,15 @@ const ServiceDetails = () => {
       return;
     }
     setShowError(false);
+
+    // Validate required fields
+    for (const input of service.inputs) {
+      if (input.question === "What is the nature of your project?" && !formData[input.question]) {
+        setValidationError("Please select the nature of your project.");
+        return;
+      }
+    }
+    setValidationError("");
 
     // --- Custom Mapping as per user instructions ---
     let formDataObj = { ...formData };
@@ -1297,6 +1307,11 @@ const ServiceDetails = () => {
               {!formData.agreement && showError && (
                 <p className="text-red-500 text-sm mt-2">
                   Please check the box to proceed.
+                </p>
+              )}
+              {validationError && (
+                <p className="text-red-500 text-sm mt-2">
+                  {validationError}
                 </p>
               )}
             </div>
