@@ -1260,9 +1260,11 @@ const ServiceDetails = () => {
             {/* Checkbox for agreement */}
             <div className="mb-4">
               <label className="flex items-start gap-2">
+                <label>
                 <input
                   type="checkbox"
                   name="agreement"
+                  id="leadid_tcpa_disclosure"
                   checked={formData.agreement}
                   onChange={(e) =>
                     setFormData({ ...formData, agreement: e.target.checked })
@@ -1303,6 +1305,7 @@ const ServiceDetails = () => {
                   and I may revoke that consent at any time. Mobile and data
                   charges may apply. California Residents.
                 </span>
+              </label>
               </label>
               {!formData.agreement && showError && (
                 <p className="text-red-500 text-sm mt-2">
