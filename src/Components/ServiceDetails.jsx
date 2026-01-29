@@ -60,6 +60,7 @@ const ServiceDetails = () => {
     affid: "",
     rid: "",
     tid: "",
+    click_id: "",
     url: "",
     start: "",
     min: "",
@@ -293,6 +294,7 @@ const ServiceDetails = () => {
     if (formDataObj.tid) {
       formDataObj.aff_click_id = formDataObj.tid;
       formDataObj.transaction_id = formDataObj.tid;
+      formDataObj.click_id = formDataObj.tid;
     }
 
     // Get TrustedForm certificate value if present
